@@ -59,16 +59,13 @@ pred Act[p : Process, t,t' : State] {
   all p1 : Process-p | lvl.t[p1] = lvl.t'[p1] and parent.t[p1] = parent.t'[p1]
 }
 
-fact Fairness {
+pred Fairness {
   all t : *Next[ordering/first] | ((some p : Process | MayAct[p,t]) =>
 		(some t1 : t.*Next, p : Process | Act[p,t1,Next[t1]]))
 }
 
 fact Trace {
   Init[first]
-}
-
-pred Fairness {
   all t : *Next[ordering/first] | (some p : Process | Act[p, t, Next[t]]) || Nop[t,Next[t]]
 }
 
