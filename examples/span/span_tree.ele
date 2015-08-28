@@ -1,0 +1,228 @@
+module span_tree
+
+open util/ordering[Lvl] 
+open util/graph[Process] 
+
+sig Process {
+  adj : set Process,
+  var lvl: lone Lvl,
+  var parent: lone Process
+}
+
+one sig Root in Process {}
+
+sig Lvl {}
+
+fact processGraph {
+  noSelfLoops[adj] 
+  undirected[adj]    
+  Process in Root.*adj 
+}
+
+pred Init {
+  no lvl
+  no parent
+}
+
+pred Nop {
+  lvl = lvl'
+  parent = parent'
+}
+
+pred MayAct[p : Process] {
+  no p.lvl
+  (p = Root || some p.adj.lvl)
+}
+
+pred Act[p : Process] {
+  no p.lvl
+  (p = Root) => {
+    p.lvl' = first
+    no p.parent'
+  } else {
+    some adjProc: p.adj {
+        some adjProc.lvl
+        p.lvl' = (adjProc.lvl).(next)
+        p.parent' = adjProc
+  }
+}
+  all p1 : Process-p | p1.lvl = p1.lvl' and p1.parent = p1.parent'
+}
+
+fact Trace {
+  Init
+  always { (some p : Process | Act[p]) || Nop }
+}
+
+// setting this as a fact rather than in the formula of GoodLiveness slightly increases performance
+pred Fairness {
+  always { (some p : Process | MayAct[p]) =>
+		(eventually { some p : Process | Act[p] } ) }
+}
+
+pred IsSpanTree {
+  Process in Root.*~(parent)
+  dag[~(parent)]
+}
+
+
+assert BadLiveness {
+	eventually { IsSpanTree }
+}
+
+assert GoodLiveness {
+	Fairness => eventually { IsSpanTree }
+}
+
+assert GoodSafety {
+	always { no p : Process | p in p.^(parent) }
+}
+
+check GoodLiveness for 3 but exactly 3 Lvl, 10 Time
+check GoodSafety for 3 but exactly 3 Lvl, 10 Time
+
+/*check BadLiveness for 3 but exactly 0 Lvl, exactly 0 Process, 10 Time
+
+check BadLiveness for 3 but exactly 1 Lvl, exactly 0 Process, 10 Time
+check BadLiveness for 3 but exactly 1 Lvl, exactly 1 Process, 10 Time
+
+check BadLiveness for 3 but exactly 2 Lvl, exactly 0 Process, 10 Time
+check BadLiveness for 3 but exactly 2 Lvl, exactly 1 Process, 10 Time
+check BadLiveness for 3 but exactly 2 Lvl, exactly 2 Process, 10 Time
+
+check BadLiveness for 3 but exactly 3 Lvl, exactly 0 Process, 10 Time
+check BadLiveness for 3 but exactly 3 Lvl, exactly 1 Process, 10 Time
+check BadLiveness for 3 but exactly 3 Lvl, exactly 2 Process, 10 Time
+check BadLiveness for 3 but exactly 3 Lvl, exactly 3 Process, 10 Time
+
+check BadLiveness for 3 but exactly 4 Lvl, exactly 0 Process, 10 Time
+check BadLiveness for 3 but exactly 4 Lvl, exactly 1 Process, 10 Time
+check BadLiveness for 3 but exactly 4 Lvl, exactly 2 Process, 10 Time
+check BadLiveness for 3 but exactly 4 Lvl, exactly 3 Process, 10 Time
+check BadLiveness for 3 but exactly 4 Lvl, exactly 4 Process, 10 Time
+
+check BadLiveness for 3 but exactly 5 Lvl, exactly 0 Process, 10 Time
+check BadLiveness for 3 but exactly 5 Lvl, exactly 1 Process, 10 Time
+check BadLiveness for 3 but exactly 5 Lvl, exactly 2 Process, 10 Time
+check BadLiveness for 3 but exactly 5 Lvl, exactly 3 Process, 10 Time
+check BadLiveness for 3 but exactly 5 Lvl, exactly 4 Process, 10 Time
+check BadLiveness for 3 but exactly 5 Lvl, exactly 5 Process, 10 Time
+
+check BadLiveness for 3 but exactly 6 Lvl, exactly 0 Process, 10 Time
+check BadLiveness for 3 but exactly 6 Lvl, exactly 1 Process, 10 Time
+check BadLiveness for 3 but exactly 6 Lvl, exactly 2 Process, 10 Time
+check BadLiveness for 3 but exactly 6 Lvl, exactly 3 Process, 10 Time
+check BadLiveness for 3 but exactly 6 Lvl, exactly 4 Process, 10 Time
+check BadLiveness for 3 but exactly 6 Lvl, exactly 5 Process, 10 Time
+check BadLiveness for 3 but exactly 6 Lvl, exactly 6 Process, 10 Time
+
+check BadLiveness for 3 but exactly 7 Lvl, exactly 0 Process, 10 Time
+check BadLiveness for 3 but exactly 7 Lvl, exactly 1 Process, 10 Time
+check BadLiveness for 3 but exactly 7 Lvl, exactly 2 Process, 10 Time
+check BadLiveness for 3 but exactly 7 Lvl, exactly 3 Process, 10 Time
+check BadLiveness for 3 but exactly 7 Lvl, exactly 4 Process, 10 Time
+check BadLiveness for 3 but exactly 7 Lvl, exactly 5 Process, 10 Time
+check BadLiveness for 3 but exactly 7 Lvl, exactly 6 Process, 10 Time
+check BadLiveness for 3 but exactly 7 Lvl, exactly 7 Process, 10 Time
+*/
+
+check BadLiveness for 3 but exactly 8 Lvl, exactly 0 Process, 10 Time
+check BadLiveness for 3 but exactly 8 Lvl, exactly 1 Process, 10 Time
+check BadLiveness for 3 but exactly 8 Lvl, exactly 2 Process, 10 Time
+check BadLiveness for 3 but exactly 8 Lvl, exactly 3 Process, 10 Time
+check BadLiveness for 3 but exactly 8 Lvl, exactly 4 Process, 10 Time
+check BadLiveness for 3 but exactly 8 Lvl, exactly 5 Process, 10 Time
+check BadLiveness for 3 but exactly 8 Lvl, exactly 6 Process, 10 Time
+check BadLiveness for 3 but exactly 8 Lvl, exactly 7 Process, 10 Time
+check BadLiveness for 3 but exactly 8 Lvl, exactly 8 Process, 10 Time
+
+/*check GoodLiveness for 3 but exactly 0 Lvl, exactly 0 Process, 10 Time
+
+check GoodLiveness for 3 but exactly 1 Lvl, exactly 0 Process, 10 Time
+check GoodLiveness for 3 but exactly 1 Lvl, exactly 1 Process, 10 Time
+
+check GoodLiveness for 3 but exactly 2 Lvl, exactly 0 Process, 10 Time
+check GoodLiveness for 3 but exactly 2 Lvl, exactly 1 Process, 10 Time
+check GoodLiveness for 3 but exactly 2 Lvl, exactly 2 Process, 10 Time
+
+check GoodLiveness for 3 but exactly 3 Lvl, exactly 0 Process, 10 Time
+check GoodLiveness for 3 but exactly 3 Lvl, exactly 1 Process, 10 Time
+check GoodLiveness for 3 but exactly 3 Lvl, exactly 2 Process, 10 Time
+check GoodLiveness for 3 but exactly 3 Lvl, exactly 3 Process, 10 Time
+
+check GoodLiveness for 3 but exactly 4 Lvl, exactly 0 Process, 10 Time
+check GoodLiveness for 3 but exactly 4 Lvl, exactly 1 Process, 10 Time
+check GoodLiveness for 3 but exactly 4 Lvl, exactly 2 Process, 10 Time
+check GoodLiveness for 3 but exactly 4 Lvl, exactly 3 Process, 10 Time
+check GoodLiveness for 3 but exactly 4 Lvl, exactly 4 Process, 10 Time
+
+check GoodLiveness for 3 but exactly 5 Lvl, exactly 0 Process, 10 Time
+check GoodLiveness for 3 but exactly 5 Lvl, exactly 1 Process, 10 Time
+check GoodLiveness for 3 but exactly 5 Lvl, exactly 2 Process, 10 Time
+check GoodLiveness for 3 but exactly 5 Lvl, exactly 3 Process, 10 Time
+check GoodLiveness for 3 but exactly 5 Lvl, exactly 4 Process, 10 Time
+check GoodLiveness for 3 but exactly 5 Lvl, exactly 5 Process, 10 Time*/
+
+/*check GoodSafety for 3 but exactly 0 Lvl, exactly 0 Process, 10 Time
+
+check GoodSafety for 3 but exactly 1 Lvl, exactly 0 Process, 10 Time
+check GoodSafety for 3 but exactly 1 Lvl, exactly 1 Process, 10 Time
+
+check GoodSafety for 3 but exactly 2 Lvl, exactly 0 Process, 10 Time
+check GoodSafety for 3 but exactly 2 Lvl, exactly 1 Process, 10 Time
+check GoodSafety for 3 but exactly 2 Lvl, exactly 2 Process, 10 Time
+
+check GoodSafety for 3 but exactly 3 Lvl, exactly 0 Process, 10 Time
+check GoodSafety for 3 but exactly 3 Lvl, exactly 1 Process, 10 Time
+check GoodSafety for 3 but exactly 3 Lvl, exactly 2 Process, 10 Time
+check GoodSafety for 3 but exactly 3 Lvl, exactly 3 Process, 10 Time
+
+check GoodSafety for 3 but exactly 4 Lvl, exactly 0 Process, 10 Time
+check GoodSafety for 3 but exactly 4 Lvl, exactly 1 Process, 10 Time
+check GoodSafety for 3 but exactly 4 Lvl, exactly 2 Process, 10 Time
+check GoodSafety for 3 but exactly 4 Lvl, exactly 3 Process, 10 Time
+check GoodSafety for 3 but exactly 4 Lvl, exactly 4 Process, 10 Time
+
+check GoodSafety for 3 but exactly 5 Lvl, exactly 0 Process, 10 Time
+check GoodSafety for 3 but exactly 5 Lvl, exactly 1 Process, 10 Time
+check GoodSafety for 3 but exactly 5 Lvl, exactly 2 Process, 10 Time
+check GoodSafety for 3 but exactly 5 Lvl, exactly 3 Process, 10 Time
+check GoodSafety for 3 but exactly 5 Lvl, exactly 4 Process, 10 Time
+check GoodSafety for 3 but exactly 5 Lvl, exactly 5 Process, 10 Time*/
+
+
+// Span (1) scenario
+/*check BadLiveness for 0 but exactly 0 Lvl, 10 Time
+check BadLiveness for 1 but exactly 1 Lvl, 10 Time
+check BadLiveness for 2 but exactly 2 Lvl, 10 Time
+check BadLiveness for 3 but exactly 3 Lvl, 10 Time
+check BadLiveness for 4 but exactly 4 Lvl, 10 Time
+check BadLiveness for 5 but exactly 5 Lvl, 10 Time
+check BadLiveness for 6 but exactly 6 Lvl, 10 Time
+check BadLiveness for 7 but exactly 7 Lvl, 10 Time
+check BadLiveness for 8 but exactly 8 Lvl, 10 Time*/
+
+// Span (2) scenario
+/*check GoodLiveness for 0 but exactly 0 Lvl, 10 Time
+check GoodLiveness for 1 but exactly 1 Lvl, 10 Time
+check GoodLiveness for 2 but exactly 2 Lvl, 10 Time
+check GoodLiveness for 3 but exactly 3 Lvl, 10 Time
+check GoodLiveness for 4 but exactly 4 Lvl, 10 Time
+check GoodLiveness for 5 but exactly 5 Lvl, 10 Time
+check GoodLiveness for 6 but exactly 6 Lvl, 10 Time
+check GoodLiveness for 7 but exactly 7 Lvl, 10 Time
+check GoodLiveness for 8 but exactly 8 Lvl, 10 Time*/
+
+// Span (3) scenario
+/*check GoodSafety for 0 but exactly 0 Lvl, 10 Time
+check GoodSafety for 1 but exactly 1 Lvl, 10 Time
+check GoodSafety for 2 but exactly 2 Lvl, 10 Time
+check GoodSafety for 3 but exactly 3 Lvl, 10 Time
+check GoodSafety for 4 but exactly 4 Lvl, 10 Time
+check GoodSafety for 5 but exactly 5 Lvl, 10 Time
+check GoodSafety for 6 but exactly 6 Lvl, 10 Time
+check GoodSafety for 7 but exactly 7 Lvl, 10 Time
+check GoodSafety for 8 but exactly 8 Lvl, 10 Time*/
+
+
+
