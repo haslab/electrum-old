@@ -66,12 +66,11 @@ fact Fairness {
 
 fact Trace {
   Init[first]
-  all t : *Next[ordering/first] | (some p : Process | Act[p, t, Next[t]]) || Nop[t,Next[t]]
 }
 
-/*pred PossTrans[t, t' : State] {
-  all p : Process | (some p : Process | Act[p, t, t']) || Nop[t,t']
-}*/
+pred Fairness {
+  all t : *Next[ordering/first] | (some p : Process | Act[p, t, Next[t]]) || Nop[t,Next[t]]
+}
 
 pred IsSpanTree[t : State] {
   Process in Root.*~(parent.t)
@@ -82,40 +81,31 @@ pred SuccessfulRun {
   some t : *Next[ordering/first] | IsSpanTree[t]
 }
 
-/*pred TraceWithoutLoop {
-  all s, s' : State | s!=s' => {
-    !EquivStates[s, s']
-    (s' in so/nexts[s] && (s' != so/next[s])) => !PossTrans[s,s']
-  }
-  all s: State | !SpanTreeAtState[s]
-}*/
-
-/*pred EquivStates[t,t' : State] {
-  lvl.t = lvl.t'
-  parent.t = parent.t'
-}*/
-
-assert Liveness {
+pred Liveness {
 	some Loop => some t : *Next[ordering/first] | IsSpanTree[t]
 }
 
-assert Safety {
+pred Safety {
 	all t : *Next[ordering/first] | no p : Process | p in p.^(parent.t)
 }
 
-/*assert Closure {
-  all t : State |
-    IsSpanTree[t] => (parent.t = parent.(Next[t]))
-}*/
-
-fact {
-all p : Process | #adj[p] < 3
+assert BadLiveness {
+	Liveness
 }
 
-// note that for the worst case topology and choice of root,
-// the scope of Lvl must equal the scope of Process
-run SuccessfulRun for 12 State, exactly 4 Process, 3 Lvl expect 1
-// run TraceWithoutLoop for 8 but 9 State expect 1
-check Liveness for 5 but 5 Process, 5 Lvl, 30 State expect 0
-check Safety for 5 but 5 Process, 5 Lvl, 20 State expect 1
-//check Closure for 5 but 20 State expect 0
+assert GoodLiveness {
+	Fairness => Liveness
+}
+
+assert GoodSafety {
+	Safety
+}
+
+// Span (1) scenario
+check BadLiveness for 3 but 10 State
+// Span (2) scenario
+check GoodLiveness for 3 but 10 State
+// Span (3) scenario
+check GoodSafety for 3 but 10 State
+
+

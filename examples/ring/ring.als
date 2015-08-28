@@ -1,11 +1,16 @@
-module election --- the final version (as depicted in Fig 6.1)
+module ring
 
-open util/ordering[Process] as PO
+open util/ordering[Id] 
+
+sig Id {}
 
 sig Process {
 	succ: Process,
-	var toSend: set Process,
-	}
+	var toSend: set Id,
+	id : Id
+} {
+	@id in Process lone -> Id
+}
 
 var sig elected in Process {}
 
@@ -14,48 +19,45 @@ fact ring {
 	}
 
 pred init  {
-	all p: Process | p.toSend = p
+	all p: Process | p.toSend = p.id
 	}
 
 pred step [p: Process] {
-		some id: p.toSend {
-			p.toSend' = p.toSend - id
-			p.succ.toSend' = p.succ.toSend + (id - p.succ.prevs)
+		some id_: p.toSend {
+			p.toSend' = p.toSend - id_
+			p.succ.toSend' = p.succ.toSend + (id_ - prevs[p.succ.id])
 		}
 	}
 
 fact defineElected {
 	no elected
-	next always (elected = {p: Process | p in p.toSend and previous p not in p.toSend})
-	}
+	always { elected' = {p: Process | (after { p.id in p.toSend }) and p.id not in p.toSend} }
+}
 
 fact traces {
-	init 
-	always (all p: Process | step[p] or step [succ.p] or skip [p])
+	init
+	always { all p: Process | step[p] or step [p.~succ] or skip [p] }
 	}
 
 pred skip [p: Process] {
 	p.toSend' = p.toSend
 	}
 
-pred show { eventually some elected }
-run show for 3 Process, 4 Time
-// This generates an instance similar to Fig 6.4
-
-//assert AtMostOneElected { lone elected.Time }
-assert AtMostOneElected { 
-	always (some elected implies (lone elected and next always no elected))
+assert GoodSafety { 
+	always { all x : elected | always { all y : elected | x = y }}
  }
-// with Counting-LTL: possible??
 
-check AtMostOneElected for 3 Process, 7 Time
-// This should not find any counterexample
-
-pred progress  {
-	always (some Process.toSend => some p: Process | not skip [p])
+pred Progress  {
+	always {some Process.toSend => after { some p: Process | not skip [p]} }
 	}
 
-assert AtLeastOneElected { progress => eventually some elected }
-check AtLeastOneElected for 3 Process, 7 Time
-// This should not find any counterexample
+assert BadLiveness { some Process => eventually { some elected } }
 
+assert GoodLiveness { some Process && Progress => eventually { some elected } }
+
+// Ring (1) scenario
+check BadLiveness for 3 but 10 Time
+// Ring (2) scenario
+check GoodLiveness for 3 but 10 Time
+// Ring (3) scenario
+check GoodSafety for 3 but 10 Time
