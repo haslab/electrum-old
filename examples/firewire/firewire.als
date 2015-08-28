@@ -1,5 +1,8 @@
 module firewire
 
+
+open util/ordering[State] as ord
+
 abstract sig Msg {}
 one sig Req, Ack extends Msg {}
 
@@ -8,30 +11,10 @@ sig Node {to, from: set Link} {
   from = {x: Link | x.source = this}
   }
 
-var sig Waiting, Active, Contending, Elected in Node {}
-
-fact {
-	always {
-		Waiting & Active = none
-		Waiting & Contending = none
-		Waiting & Elected = none
-		Contending & Active = none
-		Contending & Elected = none
-		Elected & Active = none
-		Waiting + Active + Contending + Elected = Node
-	}
-}
-
-sig Link {
-	target, source: Node, 
-	reverse: Link,
-	var queue : Queue
-} {
+sig Link {target, source: Node, reverse: Link} {
   reverse.@source = target
   reverse.@target = source
   }
-
-var sig ParentLinks extends Link {}
 
 /**
  * at most one link between a pair of nodes in a given direction
@@ -49,157 +32,149 @@ some tree: Node lone -> Node, root: Node {
   }
 }
 
-abstract sig Op {}
+sig Op {}
 one sig Init, AssignParent, ReadReqOrAck, Elect, WriteReqOrAck,
 ResolveContention, Stutter extends Op {}
 
-one var sig Happen in Op {}
-
-pred SameState {
-  Waiting = Waiting'
-  Active = Active'
-  Contending = Contending'
-  Elected = Elected'
-  ParentLinks = ParentLinks'
-  all x: Link | SameQueue [queue[x], queue'[x]]
-  }
-
-pred Trans {
-  Happen' != Init
-//  Happen' != Stutter
-  Happen' = Stutter => SameState
-  Happen' = AssignParent => {
-    some x: Link {
-      x.target in Waiting & Waiting'
-      NoChangeExceptAt [x.target]
-      ! IsEmptyQueue [x]
-      ParentLinks' = ParentLinks + x
-      ReadQueue [x]
-      }}
-  Happen' = ReadReqOrAck => {
-    ParentLinks' = ParentLinks
-    some x: Link {
-      x.target in (Active + Contending) & (PeekQueue [x, Ack] => Contending' else Active')
-      NoChangeExceptAt [x.target]
-      ! IsEmptyQueue [x]
-      ReadQueue [x]
-      }}
-  Happen' = Elect => {
-    ParentLinks' = ParentLinks
-    some n: Node {
-      n in Active & Elected'
-      NoChangeExceptAt [n]
-      n.to in ParentLinks
-      QueuesUnchanged [Link]
-      }}
-  Happen' = WriteReqOrAck => {
-    -- note how this requires access to child ptr
-    ParentLinks' = ParentLinks
-    some n: Node {
-      n in Waiting & Active'
-      lone n.to - ParentLinks
-      NoChangeExceptAt [n]
-      all x: n.from | WriteQueue [x, (x.reverse in ParentLinks => Ack else Req)]
-      QueuesUnchanged [Link - n.from]
-      }}
-  Happen' = ResolveContention => {
-    some x: Link {
-      x.(source + target) in Contending & Active'
-      NoChangeExceptAt [x.(source + target)]
-      ParentLinks' = ParentLinks + x
-      }
-    QueuesUnchanged [Link]
-    } 
+sig State {
+  disj waiting, active, contending, elected: set Node,
+  parentLinks: set Link,
+  queue: Link -> one Queue,
+  op: Op -- the operation that produced the state
+  } {
+  waiting + active + contending + elected = Node
 }
 
-pred NoChangeExceptAt [nodes: set Node] {
-  (Node - nodes) & Waiting = (Node - nodes) & Waiting'
-  (Node - nodes) & Active = (Node - nodes) & Active'
-  (Node - nodes) & Contending = (Node - nodes) & Contending'
-  (Node - nodes) & Elected = (Node - nodes) & Elected'
+pred SameState [s, s': State] {
+  s.waiting = s'.waiting
+  s.active = s'.active
+  s.contending = s'.contending
+  s.elected = s'.elected
+  s.parentLinks = s'.parentLinks
+  all x: Link | SameQueue [s.queue[x], s'.queue[x]]
   }
+
+pred Trans [s, s': State] {
+  s'.op != Init
+  s'.op = Stutter => SameState [s, s']
+  s'.op = AssignParent => {
+    some x: Link {
+      x.target in s.waiting & s'.waiting
+      NoChangeExceptAt [s, s', x.target]
+      ! IsEmptyQueue [s, x]
+      s'.parentLinks = s.parentLinks + x
+      ReadQueue [s, s', x]
+      }}
+  s'.op = ReadReqOrAck => {
+    s'.parentLinks = s.parentLinks
+    some x: Link {
+      x.target in s.(active + contending) & (PeekQueue [s, x, Ack] => s'.contending else s'.active)
+      NoChangeExceptAt [s, s', x.target]
+      ! IsEmptyQueue [s, x]
+      ReadQueue [s, s', x]
+      }}
+  s'.op = Elect => {
+    s'.parentLinks = s.parentLinks
+    some n: Node {
+      n in s.active & s'.elected
+      NoChangeExceptAt [s, s', n]
+      n.to in s.parentLinks
+      QueuesUnchanged [s, s', Link]
+      }}
+  s'.op = WriteReqOrAck => {
+    -- note how this requires access to child ptr
+    s'.parentLinks = s.parentLinks
+    some n: Node {
+      n in s.waiting & s'.active
+      lone n.to - s.parentLinks
+      NoChangeExceptAt [s, s', n]
+      all x: n.from |
+        let msg = (x.reverse in s.parentLinks => Ack else Req) |
+          WriteQueue [s, s', x, msg]
+      QueuesUnchanged [s, s', Link - n.from]
+      }}
+  s'.op = ResolveContention => {
+    some x: Link {
+      let contenders = x.(source + target) {
+        contenders in s.contending & s'.active
+        NoChangeExceptAt [s, s', contenders]
+        }
+      s'.parentLinks = s.parentLinks + x
+      }
+    QueuesUnchanged [s, s', Link]
+    }
+}
+
+pred NoChangeExceptAt [s, s': State, nodes: set Node] {
+  let ns = Node - nodes {
+  ns & s.waiting = ns & s'.waiting
+  ns & s.active = ns & s'.active
+  ns & s.contending = ns & s'.contending
+  ns & s.elected = ns & s'.elected
+  }}
 
 sig Queue {slot: lone Msg, overflow: lone Msg}
 
-pred SameQueue [q, q1: Queue] {
-    q.slot = q1.slot && q.overflow = q1.overflow
+pred SameQueue [q, q': Queue] {
+    q.slot = q'.slot && q.overflow = q'.overflow
   }
 
-pred ReadQueue [x: Link] {
+pred ReadQueue [s, s': State, x: Link] {
 --  let q = s'.queue[x] | no q.(slot + overflow)
-  no queue'[x].(slot + overflow)
-  all x1: Link - x | queue'[x1] = queue[x1]
+  no s'.queue[x].(slot + overflow)
+  all x': Link - x | s'.queue[x'] = s.queue[x']
   }
 
-pred PeekQueue [x: Link, m: Msg] {
-  m = queue[x].slot
+pred PeekQueue [s: State, x: Link, m: Msg] {
+  m = s.queue[x].slot
   }
 
-pred WriteQueue [x: Link, m: Msg] {
-  no queue[x].slot =>
-    ( (queue'[x]).slot = m && no (queue'[x]).overflow) else
-    some (queue'[x]).overflow
+pred WriteQueue [s, s': State, x: Link, m: Msg] {
+        let q = s'.queue[x] |
+  no s.queue[x].slot =>
+    ( q.slot = m && no q.overflow) else
+    some q.overflow
   }
 
-pred QueuesUnchanged [xs: set Link] {
-  all x: xs | queue'[x] = queue[x]
+pred QueuesUnchanged [s, s': State, xs: set Link] {
+  all x: xs | s'.queue[x] = s.queue[x]
   }
 
-pred IsEmptyQueue [x: Link] {
-  no queue[x].(slot + overflow)
+pred IsEmptyQueue [s: State, x: Link] {
+  no s.queue[x].(slot + overflow)
 --  let q = s.queue[x] | no q.(slot + overflow)
   }
 
-pred Initialization {
-  Happen = Init
-  Node in Waiting
-  no ParentLinks
-  all x: Link | IsEmptyQueue [x] 
+pred Initialization [s: State] {
+  s.op = Init
+  Node in s.waiting
+  no s.parentLinks
+  all x: Link | IsEmptyQueue [s, x]
   }
 
 pred Execution  {
-  Initialization
-  always { Trans }
+  Initialization [ord/first]
+  all s: State - ord/last | let s' = ord/next[s] | Trans [s, s']
   }
 
 pred ElectionHappens {
     Execution
-    eventually { some Elected }
-//	no Elected
+        some s: State | some s.elected
+    some s: State | no s.elected
 }
 
-assert AtMostOneElected {
-  Execution  => (always { lone Elected })
+assert BadSafety {
+  Execution  => (all s : State | lone s.elected)
   }
 
-assert OneEventuallyElected {
-  Execution  => (eventually { some Elected })
+assert BadLiveness {
+  Execution  => (some s : State | some s.elected)
   }
 
-assert NoOverflow {
-  Execution  => (always { all x: Link | no queue[x].overflow })
-  }
+// Firewire (1) scenario
+check BadLiveness for 0 but 3 Node, 4 Link, exactly 3 Queue, 12 State
+// Firewire (2) scenario
+check BadSafety for 0 but 3 Node, 4 Link, exactly 3 Queue, 12 State
 
-run Execution for 7 Op, 2 Msg,
-  exactly 2 Node, 4 Link, 4 Queue, exactly 6 Time expect 1
 
-run ElectionHappens for 7 Op, 2 Msg,
-  exactly 3 Node,  6 Link, 3 Queue, exactly 7 Time expect 1
 
--- only 5 queues needed: just count
--- no solution: establishes at most 3 queues needed
-check NoOverflow for 7 Op, 2 Msg,
-  3 Node, 6 Link, 5 Queue, 9 Time expect 0
-
-check AtMostOneElected for 7 Op, 2 Msg,
-  3 Node, 6 Link, 3 Queue, exactly 9 Time expect 0
-
-check OneEventuallyElected for 7 Op, 2 Msg,
-  3 Node, 6 Link, 3 Queue,  9 Time expect 1
-
-// DEFINED VARIABLES
-// Defined variables are uncalled, no-argument functions.
-// They are helpful for getting good visualization.
-fun queued: Link -> Msg {
-  {L: Link, m: Msg | m in L.(queue).slot}
-}
