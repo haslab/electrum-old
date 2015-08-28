@@ -41,7 +41,6 @@ fact {no x,y: Link | x!=y && x.source = y.source && x.target = y.target}
 /**
  * topology is tree-like: acyclic when viewed as an undirected graph
  */
-
 one sig Tree{
    tree: Node->Node
 }
@@ -71,7 +70,6 @@ pred SameState {
 
 pred Trans {
   Happen' != Init
-//  Happen' != Stutter
   Happen' = Stutter => SameState
   Happen' = AssignParent => {
     some x: Link {
@@ -98,7 +96,6 @@ pred Trans {
       QueuesUnchanged [Link]
       }}
   Happen' = WriteReqOrAck => {
-    -- note how this requires access to child ptr
     ParentLinks' = ParentLinks
     some n: Node {
       n in Waiting & Active'
@@ -131,7 +128,6 @@ pred SameQueue [q, q1: Queue] {
   }
 
 pred ReadQueue [x: Link] {
---  let q = s'.queue[x] | no q.(slot + overflow)
   no queue'[x].(slot + overflow)
   all x1: Link - x | queue'[x1] = queue[x1]
   }
@@ -152,7 +148,6 @@ pred QueuesUnchanged [xs: set Link] {
 
 pred IsEmptyQueue [x: Link] {
   no queue[x].(slot + overflow)
---  let q = s.queue[x] | no q.(slot + overflow)
   }
 
 pred Initialization {
@@ -170,7 +165,6 @@ pred Execution  {
 pred ElectionHappens {
     Execution
     eventually { some Elected }
-//	no Elected
 }
 
 assert BadSafety {
@@ -181,21 +175,10 @@ assert BadLiveness {
   Execution  => (eventually { some Elected })
   }
 
-//check BadLiveness for 0 but 3 Node, 4 Link, exactly 3 Queue, 10 Time
-//check BadSafety for 0 but 3 Node, 4 Link, exactly 3 Queue, 10 Time
-
-
-// Firewire (1) scenario for n = 3 (the scope of Op and Msg is fixed)
-check BadLiveness for 0 but exactly 0 Node, exactly 0 Link, exactly 3 Queue, 10 Time
-check BadLiveness for 0 but exactly 1 Node, exactly 0 Link, exactly 3 Queue, 10 Time
-check BadLiveness for 0 but exactly 2 Node, exactly 2 Link, exactly 3 Queue, 10 Time
-check BadLiveness for 0 but exactly 3 Node, exactly 4 Link, exactly 3 Queue, 10 Time
-
-// Firewire (2) scenario for n = 3 (the scope of Op and Msg is fixed)
-check BadSafety for 0 but exactly 0 Node, exactly 0 Link, exactly 3 Queue, 10 Time
-check BadSafety for 0 but exactly 1 Node, exactly 0 Link, exactly 3 Queue, 10 Time
-check BadSafety for 0 but exactly 2 Node, exactly 2 Link, exactly 3 Queue, 12 Time
-check BadSafety for 0 but exactly 3 Node, exactly 4 Link, exactly 3 Queue, 12 Time
+// Firewire (1) scenario
+check BadLiveness for 0 but 3 Node, 4 Link, exactly 3 Queue, 10 Time
+// Firewire (2) scenario
+check BadSafety for 0 but 3 Node, 4 Link, exactly 3 Queue, 10 Time
 
 // DEFINED VARIABLES
 // Defined variables are uncalled, no-argument functions.
@@ -203,4 +186,4 @@ check BadSafety for 0 but exactly 3 Node, exactly 4 Link, exactly 3 Queue, 12 Ti
 fun queued: Link -> Msg {
   {L: Link, m: Msg | m in L.(queue).slot}
 }
-//run {}
+
