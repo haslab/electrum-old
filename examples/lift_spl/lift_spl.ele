@@ -37,28 +37,28 @@ abstract sig ClosedEvent extends Event {
 } {
 	no bs & pressed
 	Lift not in Open
-	Lift.load = next { Lift.load }
-	next { pressed } = pressed + bs
+	Lift.load = Lift.load'
+	pressed' = pressed + bs
 	Lift.load = Empty => no bs&LiftButton
 }
 
 sig Idle extends ClosedEvent { } {
 	idle
 	
-	FPark in Product => next { Lift.current } = parkLift
-							  else next { Lift.current } = Lift.current
+	FPark in Product => Lift.current' = parkLift
+							  else Lift.current' = Lift.current
 
-	next { Lift in Open } iff Lift in Open
-	next { Lift in Up } iff Lift in Up
+	Lift in Open' iff Lift in Open
+	Lift in Up' iff Lift in Up
 }
 
 sig Move extends ClosedEvent { } {
   some LiftCall + LandingCall
 
-  next { Lift.current } = moveLift
-  next { Lift in Open } iff next { willOpen }
+  Lift.current' = moveLift
+  Lift in Open' iff willOpen'
 
-  next { Lift in Up } iff Lift in Up
+  Lift in Up' iff Lift in Up
 }
 
 sig OpenedEvent extends Event {
@@ -68,23 +68,23 @@ sig OpenedEvent extends Event {
 	no bs & floor.(Lift.current)
 	
 	Lift in Open
-	next { Lift in Up } iff Lift in Up
-	next { current } = current
+	Lift in Up' iff Lift in Up
+	current' = current
   
-	next { ((Overload in Lift.load) || (FIdle in Product && idle)) => Lift in Open else Lift not in Open }
+	after { ((Overload in Lift.load) || (FIdle in Product && idle)) => Lift in Open else Lift not in Open }
 
-	let del = next { Empty in Lift.load } => LiftButton else none |
-		(pressed-del)-floor.(Lift.current) + bs = next { pressed }
+	let del = Empty in Lift.load' => LiftButton else none |
+		(pressed-del)-floor.(Lift.current) + bs = pressed'
 }
 
 sig ChangeDir extends ClosedEvent {} {
   !idle
   no LiftCall + LandingCall
 
-  not ( next { Lift in Up } iff Lift in Up )
+  not ( Lift in Up' iff Lift in Up )
 
-  next { Lift in Open } iff Lift in Open
-  current =  next { current }
+  Lift in Open' iff Lift in Open
+  current =  current'
 }
 
 pred willOpen[] {
