@@ -9,7 +9,7 @@ fact FD {
 	S in Product or T in Product
 }
 
-// in each instant there is one, but it may vary, and it may occur multiple times
+// in each instant there is one,  but it may vary, and it may occur multiple times
 abstract sig State {}
 
 one sig S1,S2,S3,S4,S5,S6,S7,S8 extends State {}
@@ -22,99 +22,75 @@ var abstract sig Event {
 
 var sig Pay extends Event {} {
 	feature = V
-}
-
-fact {
-	always { some Pay => Current = S1 && Current' = S2 }
+	Current = S1
+	Current' = S2
 }
 
 var sig Free extends Event {} {
 	feature = F
-}
-
-fact {
-	always { some Free => Current = S3 && Current' = S1 }
+	Current = S3
+	Current' = S1
 }
 
 var sig Change extends Event {} {
 	feature = V
-}
-
-fact {
-	always { some Change => Current = S2 && Current' = S3 }
+	Current = S2
+	Current' = S3
 }
 
 
 var sig Cancel extends Event {} {
 	feature = C
-}
-
-fact {
-	always { some Cancel => Current = S3 && Current' = S4 }
+	Current = S3
+	Current' = S4
 }
 
 var sig Return extends Event {} {
 	feature = C
-}
-
-fact {
-	always { some Return =>Current = S4 && Current' = S1 }
+	Current = S4
+	Current' = S1
 }
 
 var sig Soda extends Event {} {
 	feature = S
-}
-
-fact {
-	always { some Soda => Current = S3 && Current' = S5 }
+	Current = S3
+	Current' = S5
 }
 
 var sig Tea extends Event {} {
 	feature = T
-}
-
-fact {
-	always { some Tea => Current = S3 && Current' = S6 }
+	Current = S3
+	Current' = S6
 }
 
 var sig ServeSoda extends Event {} {
 	feature = S
-}
-
-fact {
-	always { some ServeSoda => Current = S5 && Current' = S7 }
+	Current = S5 
+	Current' = S7
 }
 
 var sig ServeTea extends Event {} {
-	feature = T
-}
-
-fact {
-	always { some ServeTea => Current = S6 && Current' = S7 }
+	feature = T	
+	Current = S6
+	Current' = S7
 }
 
 var sig Skip extends Event {} {
 	feature = F
-}
-
-fact {
-	always { some Skip => Current = S7 && Current' = S1 }
+	Current = S7 
+	Current' = S1
 }
 
 var sig Open extends Event {} {
 	feature = V
-}
-
-fact {
-	always { some Open => Current = S7 && Current' = S8 }
+	Current = S7 
+	Current' = S8
 }
 
 var sig Close extends Event {} {
 	feature = V
-}
-
-fact {
-	always { some Close => Current = S8 && Current' = S1 }
+	Current = S8
+	Current' = S1
 }
 
 fact Priorities {
