@@ -1,6 +1,6 @@
-open util/ordering[Floor] as fl
-
 module Lift
+
+open util/ordering[Floor]
 
 one sig Lift {
 	var current : one Floor,
@@ -34,7 +34,7 @@ var sig Pressed in Button {}
 abstract var sig Event {}
 
 abstract var sig ClosedEvent extends Event {
-	bs : set Button
+	var bs : set Button
 } {
 	no bs & Pressed
 	Lift not in Open
@@ -74,7 +74,7 @@ var sig ChangeDir extends ClosedEvent {} {
 }
 
 var sig OpenedEvent extends Event {
-	bs : set Button
+	var bs : set Button
 } {
 	no bs & Pressed
 	no bs & floor.(Lift.current)
@@ -127,11 +127,11 @@ fun nextFloors[] : set Floor {
 }
 
 fun nextFloorsUp[] : set Floor {
-  (Lift.current).*fl/next
+  (Lift.current).*ordering/next
 }
 
 fun nextFloorsDown[] : set Floor {
-  (Lift.current).*fl/prev
+  (Lift.current).*ordering/prev
 }
 
 pred idle [] {
