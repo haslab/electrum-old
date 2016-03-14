@@ -6,7 +6,7 @@ one sig FEmpty, FThird, FOverload, FIdle, FExecutive, FPark extends Feature {}
 sig Product in Feature {}
 
 fact {
-FIdle + FExecutive not in Product
+  FIdle + FExecutive not in Product
 }
 
 abstract sig Load {}
@@ -23,9 +23,8 @@ abstract sig Button {
 }
 
 fact {
-//	all f:Floor | one (LandingButton&floor.f) and one (LiftButton&floor.f)
-        all f:Floor | one b:LandingButton | b.floor = f
-        all f:Floor | one b:LiftButton | b.floor = f
+  all f:Floor | one b:LandingButton | b.floor = f
+  all f:Floor | one b:LiftButton | b.floor = f
 }
 
 abstract sig LandingButton, LiftButton extends Button {}
@@ -157,93 +156,15 @@ fact Trace {
   always { Idle[Pressing] || Move[Pressing] || ChangeDir[Pressing] || OpenedEvent[Pressing] }
 }
 
-// AG (p => AF q)
 pred prop1 {
---	always { LB3 in Pressed => eventually { current = F3 && some Open } }
---	always { LB2 in Pressed => eventually { current = F2 && some Open } }
---	always { LB1 in Pressed => eventually { current = F1 && some Open } }
-//	always { all f : Floor | floor.f&LandingButton in Pressed => eventually { current = f && some Open } }
-always { all f : Floor | (some b:LandingButton | b.floor=f and b in Pressed) => eventually { current = f && some Open } }
+  always { all f : Floor | (some b:LandingButton | b.floor=f and b in Pressed) => 
+    eventually { current = f && some Open } }
 }
-
-// EF (p && EG q)
-pred prop1a {
---	eventually { LB2 in Pressed && always { not (current = F2 && some Open && no Up) } }
-}
-
-// AG (p => AF q)
 pred prop2 {
---	always { IB3 in Pressed => eventually { current = F3 && some Open } }
---	always { IB2 in Pressed => eventually { current = F2 && some Open } }
---	always { IB1 in Pressed => eventually { current = F1 && some Open } }
-//	always { all f : Floor | floor.f&LiftButton in Pressed => eventually { current = f && some Open } }
-always { all f : Floor | (some b:LiftButton | b.floor=f and b in Pressed) => eventually { current = f && some Open } }
-}
-/*
-// AG (p => A q U r)
-pred prop3a {
---	always { current = F2 && IB3 in Pressed && some Up =>
-	--	( (some Up) until (current = F3) )
+  always { all f : Floor | (some b:LiftButton | b.floor=f and b in Pressed) =>
+    eventually { current = f && some Open } }
 }
 
-// AG (p => A q U r)
-pred prop3b {
---	always { current = F3 && IB1 in Pressed && no Up => 
---		( (no Up) until (current = F1) )
-}
-
-// EF (p && EG q)
-pred prop4 {
-	eventually { no Open && always { no Open } }
-}
-
-// EF p
-pred prop5a {
-  always { not (current = F1 && idle && no Open) }
-}
-
-// AG (p => EG q) (invalid)
-pred prop5b { }
-
-// EF p
-pred prop5part { }
-
-// EF p
-pred prop5c {
-  always { not (current = F2 && idle && no Open) }
-}
-
-// AG (p => EG q) (invalid)
-pred prop5d { }
-
-// EF (p && EG q)
-pred prop5e {}
-
-// EF (p && A q U r) (invalid)
-//pred prop5' {}
-
-// EF p
-pred prop6 {
-  eventually { current = F2 && IB2 not in Pressed && some Up && some Open }
-}
-
-// EF p
-pred prop7 {
-  eventually { current = F2 && IB2 not in Pressed && no Up && some Open }
-}
-*/
-
-/*one sig F1 extends Floor { } { this = first }
-one sig F2 extends Floor { } { }
-one sig F3 extends Floor { } { this = last }
-one sig LB1 extends LandingButton { } { floor = F1 }
-one sig LB2 extends LandingButton { } { floor = F2 }
-one sig LB3 extends LandingButton { } { floor = F3 }
-one sig IB1 extends LiftButton { } { floor = F1 }
-one sig IB2 extends LiftButton { } { floor = F2 }
-one sig IB3 extends LiftButton { } { floor = F3 }*/
-
---run {} for exactly 3 Floor, exactly 6 Button
 //B1: check {no Product => prop1} for 1 but 20 Time,  exactly 3 Floor,  exactly 6 Button
 //E1: check {Product = FEmpty => prop1} for 1 but 9 Time,  exactly 3 Floor, exactly 6 Button 
 //O1: check {Product = FOverload => prop1} for 1 but 5 Time,  exactly 3 Floor, exactly 6 Button
@@ -254,14 +175,6 @@ I1: check {Product = FIdle => prop1} for 1 but 20 Time,  exactly 3 Floor,  exact
 //EO1: check {Product = FEmpty + FOverload => prop1} for 1 but 9 Time,  exactly 3 Floor,  exactly 6 Button
 A1: check {prop1} for 1 but 20 Time,  exactly 3 Floor,  exactly 6 Button
 
-/*B1': run{no Product && prop1'} for 0 but 9 Time, 9 Event expect 1
-run E1' {Product = FEmpty && prop1'} for 0 but 9 Time, 9 Event expect 1
-run O1' {Product = FOverload && prop1'} for 0 but 9 Time, 9 Event expect 1
-run T1' {Product = FThird && prop1'} for 0 but 9 Time, 9 Event expect 1
-run I1' {Product = FIdle && prop1'} for 0 but 9 Time, 9 Event expect 1
-run X1 {Product = FExecutive && prop1} for 0 but 9 Time, 9 Event expect 1
-run EO1' {Product = FEmpty + FOverload && prop1'} for 0 but 9 Time, 9 Event expect 1
-run A1' {prop1'} for 0 but 9 Time, 9 Event expect 1*/
 
 /*B2: check {no Product => prop2} for 1 but 9 Time,  3 Floor, 6 Button
 E2: check {Product = FEmpty => prop2} for 1 but 9 Time,  3 Floor, 6 Button 
@@ -273,65 +186,3 @@ P2: check {Product = FPark => prop2} for 1 but 9 Time,  3 Floor, 6 Button
 EO2: check {Product = FEmpty + FOverload => prop2} for 1 but 9 Time,  3 Floor, 6 Button 
 A2: check {prop2} for 1 but 9 Time,  3 Floor, 6 Button */
 
-/*check B3a {no Product => prop3a} for 0 but 9 Time, 9 Event expect 0
-check E3a {Product = FEmpty => prop3a} for 0 but 9 Time, 9 Event expect 1
-check O3a {Product = FOverload => prop3a} for 0 but 9 Time, 9 Event expect 1
-check T3a {Product = FThird => prop3a} for 0 but 9 Time, 9 Event expect 1
-check I3a {Product = FIdle => prop3a} for 0 but 9 Time, 9 Event expect 1
-check EO3a {Product = FEmpty + FOverload => prop3a} for 0 but 9 Time, 9 Event expect 1
-check A3a {prop3a} for 0 but 9 Time, 9 Event expect 1
-
-check B3b {no Product => prop3b} for 0 but 9 Time, 9 Event expect 0
-check E3b {Product = FEmpty => prop3b} for 0 but 9 Time, 9 Event expect 1
-check O3b {Product = FOverload => prop3b} for 0 but 9 Time, 9 Event expect 1
-check T3b {Product = FThird => prop3b} for 0 but 9 Time, 9 Event expect 1
-check I3b {Product = FIdle => prop3b} for 0 but 9 Time, 9 Event expect 1
-check EO3b {Product = FEmpty + FOverload => prop3b} for 0 but 9 Time, 9 Event expect 1
-check A3b {prop3b} for 0 but 9 Time, 9 Event expect 1
-
-run B4 {no Product => prop4} for 0 but 9 Time, 9 Event expect 1
-run E4 {Product = FEmpty => prop4} for 0 but 9 Time, 9 Event expect 1
-run O4 {Product = FOverload => prop4} for 0 but 9 Time, 9 Event expect 1
-run T4 {Product = FThird => prop4} for 0 but 9 Time, 9 Event expect 1
-run I4 {Product = FIdle => prop4} for 0 but 9 Time, 9 Event expect 1
-run EO4 {Product = FEmpty + FOverload => prop4} for 0 but 9 Time, 9 Event expect 1
-run A4 {prop4} for 0 but 9 Time, 9 Event expect 1
-
-run B5a {no Product => prop5a} for 0 but 9 Time, 9 Event expect 1
-run E5a {Product = FEmpty => prop5a} for 0 but 9 Time, 9 Event expect 1
-run O5a {Product = FOverload => prop5a} for 0 but 9 Time, 9 Event expect 1
-run T5a {Product = FThird => prop5a} for 0 but 9 Time, 9 Event expect 1
-run I5a {Product = FIdle => prop5a} for 0 but 9 Time, 9 Event expect 1
-run EO5a {Product = FEmpty + FOverload => prop5a} for 0 but 9 Time, 9 Event expect 1
-run A5a {prop5a} for 0 but 9 Time, 9 Event expect 1
-
-run B5c {no Product => prop5c} for 0 but 9 Time, 9 Event expect 1
-run E5c {Product = FEmpty => prop5c} for 0 but 9 Time, 9 Event expect 1
-run O5c {Product = FOverload => prop5c} for 0 but 9 Time, 9 Event expect 1
-run T5c {Product = FThird => prop5c} for 0 but 9 Time, 9 Event expect 1
-run EO5c {Product = FEmpty + FOverload => prop5c} for 0 but 9 Time, 9 Event expect 1
-run A5c {prop5c} for 0 but 9 Time, 9 Event expect 1*/
-
-/*run B6 {no Product && prop6} for 0 but 9 Time, 9 Event expect 1
-run E6 {Product = FEmpty && prop6} for 0 but 9 Time, 9 Event expect 1
-run O6 {Product = FOverload && prop6} for 0 but 9 Time, 9 Event expect 1
-run T6 {Product = FThird && prop6} for 0 but 9 Time, 9 Event expect 1
-run I6 {Product = FIdle && prop6} for 0 but 9 Time, 9 Event expect 1
-run X6 {Product = FIdle && prop6} for 0 but 9 Time, 9 Event expect 1
-run P6 {Product = FIdle && prop6} for 0 but 9 Time, 9 Event expect 1
-run EO6 {Product = FEmpty + FOverload && prop6} for 0 but 9 Time, 9 Event expect 1
-run A6 {prop6} for 0 but 9 Time, 9 Event expect 1
-
-run B7 {no Product && prop7} for 0 but 9 Time, 9 Event expect 1
-run E7 {Product = FEmpty && prop7} for 0 but 9 Time, 9 Event expect 1
-run O7 {Product = FOverload && prop7} for 0 but 9 Time, 9 Event expect 1
-run T7 {Product = FThird && prop7} for 0 but 9 Time, 9 Event expect 1
-run I7 {Product = FIdle && prop7} for 0 but 9 Time, 9 Event expect 1
-run X7 {Product = FIdle && prop7} for 0 but 9 Time, 9 Event expect 1
-run P7 {Product = FIdle && prop7} for 0 but 9 Time, 9 Event expect 1
-run EO7 {Product = FEmpty + FOverload && prop7} for 0 but 9 Time, 9 Event expect 1
-run A7 {prop7} for 0 but 9 Time, 9 Event expect 1*/
-
-// #Button = 2x #Floor
-
-//run {}
