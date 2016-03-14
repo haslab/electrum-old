@@ -1,118 +1,124 @@
 module Lift
-
-open util/ordering[Floor]
-
-one sig Lift {
-	var current : one Floor,
-	var load : one Load
-} {
-	FEmpty not in Product => Empty not in load
-	FThird not in Product => Third not in load
-	FOverload not in Product => Overload not in load
-}
-
-var sig Open, Up in Lift {}
-
+open util/ordering[Floor] 
 
 abstract sig Feature {}
 one sig FEmpty, FThird, FOverload, FIdle, FExecutive, FPark extends Feature {}
 sig Product in Feature {}
 
-enum Load {Empty, Normal, Third, Overload}
+fact {
+FIdle + FExecutive not in Product
+}
 
-abstract sig Floor {}
+abstract sig Load {}
+one sig Empty, Normal, Third, Overload extends Load {}
+
+sig Floor {}
+var one sig current in Floor {}
+var one sig load in Load {}
+var lone sig Open {}
+var lone sig Up {}
 
 abstract sig Button {
-  floor : Floor
+  floor : one Floor
 }
 
+fact {
+//	all f:Floor | one (LandingButton&floor.f) and one (LiftButton&floor.f)
+        all f:Floor | one b:LandingButton | b.floor = f
+        all f:Floor | one b:LiftButton | b.floor = f
+}
 
 abstract sig LandingButton, LiftButton extends Button {}
+one sig LaB1, LaB2, LaB3 extends LandingButton {}
+one sig LiB1, LiB2, LiB3 extends LiftButton {}
 
 var sig Pressed in Button {}
+var sig Pressing in Button {}
 
-abstract var sig Event {}
-
-abstract var sig ClosedEvent extends Event {
-	var bs : set Button
-} {
+pred Idle[bs : set Button] {
 	no bs & Pressed
-	Lift not in Open
-	Lift.load = Lift.load'
+	no Open
+	load = load'
 	Pressed' = Pressed + bs
-	Lift.load = Empty => no bs&LiftButton
-}
+	(load = Empty && FEmpty in Product) => no bs&LiftButton
 
-var sig Idle extends ClosedEvent { } {
 	idle
 	
-	FPark in Product => Lift.current' = parkLift
-							  else Lift.current' = Lift.current
+	FPark in Product => current' = parkLift
+							  else current' = current
 
-	Lift in Open' iff Lift in Open
-	Lift in Up' iff Lift in Up
+	some Open' iff some Open
+	some Up' iff some Up
 }
 
-var sig Move extends ClosedEvent { } {
+pred Move[bs : set Button] {
+	no bs & Pressed
+	no Open
+	load = load'
+	Pressed' = Pressed + bs
+	(load = Empty && FEmpty in Product) => no bs&LiftButton
+
   some LiftCall + LandingCall
 
-  Lift.current' = moveLift
-  Lift in Open' iff after { willOpen }
+  current' = moveLift
+  some Open' iff after { willOpen }
 
-  Lift in Up' iff Lift in Up
+  some Up' iff some Up
 }
 
+pred ChangeDir[bs : set Button] {
+	no bs & Pressed 
+	no Open
+	load = load'
+	Pressed' = Pressed + bs
+        {(load = Empty && FEmpty in Product) implies no (bs & LiftButton)}
+        not idle
+        no LiftCall + LandingCall
 
-var sig ChangeDir extends ClosedEvent {} {
-  !idle
-  no LiftCall + LandingCall
+        not ( some Up' iff some Up )
 
-  not ( Lift in Up' iff Lift in Up )
-
-  Lift in Open' iff Lift in Open
-  current =  current'
+        some Open' iff some Open
+        current =  current'
 }
 
-var sig OpenedEvent extends Event {
-	var bs : set Button
-} {
+pred OpenedEvent[bs : set Button] {
 	no bs & Pressed
-	no bs & floor.(Lift.current)
+	no bs & floor.(current)
 	
-	Lift in Open
-	Lift in Up' iff Lift in Up
+	some Open
+	Up' = Up
 	current' = current
   
-	after { ((Overload in Lift.load) || (FIdle in Product && idle)) => Lift in Open else Lift not in Open }
+	after { ((Overload in load && FOverload in Product) || (FIdle in Product && idle)) => some Open else no Open }
 
-	(Pressed-((Empty in Lift.load' => LiftButton else none)))-floor.(Lift.current) + bs = Pressed'
+	(Pressed-(((Empty in load' && FEmpty in Product) => LiftButton else none)))-floor.(current) + bs = Pressed'
 }
 
 pred willOpen[] {
-	 (Lift.current in (LiftCall + LandingCall) || (FIdle in Product && idle)) 
+	 (current in (LiftCall + LandingCall) || (FIdle in Product && idle)) 
 }
 
 fun moveLift[] : lone Floor {
-  Lift.current != max[Floor] && Lift in Up => next[Lift.current] else
-  Lift.current != min[Floor] && Lift not in Up => prev[Lift.current] else
-  Lift.current
+  (current != max[Floor] && some Up) => next[current] else
+  ((current != min[Floor] && no Up) => prev[current] else
+  current)
 }
 
 fun parkLift[] : lone Floor {
-    Lift.current != min[Floor] => prev[Lift.current] else Lift.current
+    current != min[Floor] => prev[current] else current
 }
 
 // the next lift landing button in the current direction
 fun LiftCall [] : set Floor {
-	(FExecutive in Product && F3 in Pressed.floor) => F3&nextFloors else
+	(FExecutive in Product && last in Pressed.floor) => last&nextFloors else
 	calledFloors[LiftButton]&nextFloors
 }
 
 // the next pressed landing button in the current direction
 fun LandingCall[] : set Floor {
-	(FExecutive in Product && F3 in Pressed.floor) => F3&nextFloors else
-	(Third = Lift.load && some LiftButton&Pressed) => none else
-	calledFloors[LandingButton]&nextFloors
+	(FExecutive in Product && last in Pressed.floor) => last&nextFloors else
+	((Third = load && FThird in Product && some LiftButton&Pressed) => none else
+	calledFloors[LandingButton]&nextFloors)
 }
 
 // the subset of bs that is currently pressed
@@ -122,16 +128,16 @@ fun calledFloors[bs : set Button] : set Floor {
 
 // succeeding floors in the current direction
 fun nextFloors[] : set Floor {
-	(Lift in Up) => nextFloorsUp
+	(some Up) => nextFloorsUp
                    else nextFloorsDown
 }
 
 fun nextFloorsUp[] : set Floor {
-  (Lift.current).*ordering/next
+  (current).*next
 }
 
 fun nextFloorsDown[] : set Floor {
-  (Lift.current).*ordering/prev
+  (current).*prev
 }
 
 pred idle [] {
@@ -139,57 +145,61 @@ pred idle [] {
 }
 
 pred init[] {
-  Lift.current = F1
-  Lift in Open
-  Lift in Up
-  Lift.load = Normal
+  current = first
+  some Open
+  some Up
+  load = Normal
   no Pressed
 }
 
 fact Trace {
   init
-  always { one Event }
+  always { Idle[Pressing] || Move[Pressing] || ChangeDir[Pressing] || OpenedEvent[Pressing] }
 }
 
 // AG (p => AF q)
 pred prop1 {
-	always { LB3 in Pressed => eventually { Lift.current = F3 && Lift in Open } }
-	always { LB2 in Pressed => eventually { Lift.current = F2 && Lift in Open } }
-	always { LB1 in Pressed => eventually { Lift.current = F1 && Lift in Open } }
+--	always { LB3 in Pressed => eventually { current = F3 && some Open } }
+--	always { LB2 in Pressed => eventually { current = F2 && some Open } }
+--	always { LB1 in Pressed => eventually { current = F1 && some Open } }
+//	always { all f : Floor | floor.f&LandingButton in Pressed => eventually { current = f && some Open } }
+always { all f : Floor | (some b:LandingButton | b.floor=f and b in Pressed) => eventually { current = f && some Open } }
 }
 
 // EF (p && EG q)
 pred prop1a {
-	eventually { LB2 in Pressed && always { not (Lift.current = F2 && Lift in Open && Lift not in Up) } }
+--	eventually { LB2 in Pressed && always { not (current = F2 && some Open && no Up) } }
 }
 
 // AG (p => AF q)
 pred prop2 {
-	always { IB3 in Pressed => eventually { Lift.current = F3 && Lift in Open } }
-	always { IB2 in Pressed => eventually { Lift.current = F2 && Lift in Open } }
-	always { IB1 in Pressed => eventually { Lift.current = F1 && Lift in Open } }
+--	always { IB3 in Pressed => eventually { current = F3 && some Open } }
+--	always { IB2 in Pressed => eventually { current = F2 && some Open } }
+--	always { IB1 in Pressed => eventually { current = F1 && some Open } }
+//	always { all f : Floor | floor.f&LiftButton in Pressed => eventually { current = f && some Open } }
+always { all f : Floor | (some b:LiftButton | b.floor=f and b in Pressed) => eventually { current = f && some Open } }
 }
-
+/*
 // AG (p => A q U r)
 pred prop3a {
---	always { Lift.current = F2 && IB3 in Pressed && Lift in Up =>
-	--	( (Lift in Up) until (Lift.current = F3) )
+--	always { current = F2 && IB3 in Pressed && some Up =>
+	--	( (some Up) until (current = F3) )
 }
 
 // AG (p => A q U r)
 pred prop3b {
---	always { Lift.current = F3 && IB1 in Pressed && Lift not in Up => 
---		( (Lift not in Up) until (Lift.current = F1) )
+--	always { current = F3 && IB1 in Pressed && no Up => 
+--		( (no Up) until (current = F1) )
 }
 
 // EF (p && EG q)
 pred prop4 {
-	eventually { Lift not in Open && always { Lift not in Open } }
+	eventually { no Open && always { no Open } }
 }
 
 // EF p
 pred prop5a {
-  always { not (Lift.current = F1 && idle && Lift not in Open) }
+  always { not (current = F1 && idle && no Open) }
 }
 
 // AG (p => EG q) (invalid)
@@ -200,7 +210,7 @@ pred prop5part { }
 
 // EF p
 pred prop5c {
-  always { not (Lift.current = F2 && idle && Lift not in Open) }
+  always { not (current = F2 && idle && no Open) }
 }
 
 // AG (p => EG q) (invalid)
@@ -210,20 +220,20 @@ pred prop5d { }
 pred prop5e {}
 
 // EF (p && A q U r) (invalid)
-pred prop5' {}
+//pred prop5' {}
 
 // EF p
 pred prop6 {
-  eventually { Lift.current = F2 && IB2 not in Pressed && Lift in Up && Lift in Open }
+  eventually { current = F2 && IB2 not in Pressed && some Up && some Open }
 }
 
 // EF p
 pred prop7 {
-  eventually { Lift.current = F2 && IB2 not in Pressed && Lift not in Up && Lift in Open }
+  eventually { current = F2 && IB2 not in Pressed && no Up && some Open }
 }
+*/
 
-
-one sig F1 extends Floor { } { this = first }
+/*one sig F1 extends Floor { } { this = first }
 one sig F2 extends Floor { } { }
 one sig F3 extends Floor { } { this = last }
 one sig LB1 extends LandingButton { } { floor = F1 }
@@ -231,19 +241,20 @@ one sig LB2 extends LandingButton { } { floor = F2 }
 one sig LB3 extends LandingButton { } { floor = F3 }
 one sig IB1 extends LiftButton { } { floor = F1 }
 one sig IB2 extends LiftButton { } { floor = F2 }
-one sig IB3 extends LiftButton { } { floor = F3 }
+one sig IB3 extends LiftButton { } { floor = F3 }*/
 
-check B1 {no Product => prop1} for 0 but 9 Time, 9 Event expect 0
-check E1 {Product = FEmpty => prop1} for 0 but 9 Time, 9 Event expect 0
-check O1 {Product = FOverload => prop1} for 0 but 5 Time, 5 Event expect 1
-check T1 {Product = FThird => prop1} for 0 but 9 Time, 9 Event expect 1
-check I1 {Product = FIdle => prop1} for 0 but 9 Time, 9 Event expect 0
-check X1 {Product = FExecutive => prop1} for 0 but 9 Time, 9 Event expect 1
-check P1 {Product = FPark => prop1} for 0 but 9 Time, 9 Event expect 0
-check EO1 {Product = FEmpty + FOverload => prop1} for 0 but 9 Time, 9 Event expect 1
-check A1 {prop1} for 0 but 9 Time, 9 Event expect 1
+--run {} for exactly 3 Floor, exactly 6 Button
+//B1: check {no Product => prop1} for 1 but 20 Time,  exactly 3 Floor,  exactly 6 Button
+//E1: check {Product = FEmpty => prop1} for 1 but 9 Time,  exactly 3 Floor, exactly 6 Button 
+//O1: check {Product = FOverload => prop1} for 1 but 5 Time,  exactly 3 Floor, exactly 6 Button
+//T1: check {Product = FThird => prop1} for 1 but 9 Time,  exactly 3 Floor,  exactly 6 Button
+I1: check {Product = FIdle => prop1} for 1 but 20 Time,  exactly 3 Floor,  exactly 6 Button
+//X1: check {Product = FExecutive => prop1} for 1 but 9 Time, exactly 3 Floor, exactly 6 Button
+////P1: check {Product = FPark => prop1} for 1 but 9 Time,  exactly 3 Floor,  exactly 6 Button
+//EO1: check {Product = FEmpty + FOverload => prop1} for 1 but 9 Time,  exactly 3 Floor,  exactly 6 Button
+A1: check {prop1} for 1 but 20 Time,  exactly 3 Floor,  exactly 6 Button
 
-/*run B1' {no Product && prop1'} for 0 but 9 Time, 9 Event expect 1
+/*B1': run{no Product && prop1'} for 0 but 9 Time, 9 Event expect 1
 run E1' {Product = FEmpty && prop1'} for 0 but 9 Time, 9 Event expect 1
 run O1' {Product = FOverload && prop1'} for 0 but 9 Time, 9 Event expect 1
 run T1' {Product = FThird && prop1'} for 0 but 9 Time, 9 Event expect 1
@@ -252,17 +263,17 @@ run X1 {Product = FExecutive && prop1} for 0 but 9 Time, 9 Event expect 1
 run EO1' {Product = FEmpty + FOverload && prop1'} for 0 but 9 Time, 9 Event expect 1
 run A1' {prop1'} for 0 but 9 Time, 9 Event expect 1*/
 
-/*check B2 {no Product => prop2} for 0 but 9 Time, 9 Event expect 0
-check E2 {Product = FEmpty => prop2} for 0 but 9 Time, 9 Event expect 1
-check O2 {Product = FOverload => prop2} for 0 but 9 Time, 9 Event expect 1
-check T2 {Product = FThird => prop2} for 0 but 9 Time, 9 Event expect 0
-check I2 {Product = FIdle => prop2} for 0 but 9 Time, 9 Event expect 0
-check X2 {Product = FExecutive => prop2} for 0 but 9 Time, 9 Event expect 1
-check P2 {Product = FPark => prop2} for 0 but 9 Time, 9 Event expect 0
-check EO2 {Product = FEmpty + FOverload => prop2} for 0 but 9 Time, 9 Event expect 1
-check A2 {prop2} for 0 but 9 Time, 9 Event expect 1
+/*B2: check {no Product => prop2} for 1 but 9 Time,  3 Floor, 6 Button
+E2: check {Product = FEmpty => prop2} for 1 but 9 Time,  3 Floor, 6 Button 
+O2: check {Product = FOverload => prop2} for 1 but 9 Time,  3 Floor, 6 Button 
+T2: check {Product = FThird => prop2} for 1 but 9 Time,  3 Floor, 6 Button 
+I2: check {Product = FIdle => prop2} for 1 but 9 Time,  3 Floor, 6 Button 
+X2: check {Product = FExecutive => prop2} for 1 but 9 Time,  3 Floor, 6 Button 
+P2: check {Product = FPark => prop2} for 1 but 9 Time,  3 Floor, 6 Button 
+EO2: check {Product = FEmpty + FOverload => prop2} for 1 but 9 Time,  3 Floor, 6 Button 
+A2: check {prop2} for 1 but 9 Time,  3 Floor, 6 Button */
 
-check B3a {no Product => prop3a} for 0 but 9 Time, 9 Event expect 0
+/*check B3a {no Product => prop3a} for 0 but 9 Time, 9 Event expect 0
 check E3a {Product = FEmpty => prop3a} for 0 but 9 Time, 9 Event expect 1
 check O3a {Product = FOverload => prop3a} for 0 but 9 Time, 9 Event expect 1
 check T3a {Product = FThird => prop3a} for 0 but 9 Time, 9 Event expect 1
@@ -322,3 +333,5 @@ run EO7 {Product = FEmpty + FOverload && prop7} for 0 but 9 Time, 9 Event expect
 run A7 {prop7} for 0 but 9 Time, 9 Event expect 1*/
 
 // #Button = 2x #Floor
+
+//run {}

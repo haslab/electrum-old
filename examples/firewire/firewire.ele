@@ -176,9 +176,9 @@ assert BadLiveness {
   }
 
 // Firewire (1) scenario
-check BadLiveness for 0 but 3 Node, 4 Link, exactly 3 Queue, 10 Time
+check BadLiveness for 0 but 3 Node, 4 Link, exactly 3 Queue, 1 Time
 // Firewire (2) scenario
-check BadSafety for 0 but 3 Node, 4 Link, exactly 3 Queue, 10 Time
+check BadSafety for 0 but 3 Node, 4 Link, exactly 3 Queue, 12 Time
 
 // DEFINED VARIABLES
 // Defined variables are uncalled, no-argument functions.

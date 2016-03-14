@@ -17,7 +17,7 @@ one sig S1,S2,S3,S4,S5,S6,S7,S8 extends State {}
 var one sig Current in State {}
 
 var abstract sig Event {
-	feature : Feature
+	var feature : Feature
 }
 
 var sig Pay extends Event {} {
@@ -28,8 +28,8 @@ var sig Pay extends Event {} {
 
 var sig Free extends Event {} {
 	feature = F
-	Current = S3
-	Current' = S1
+	Current = S1
+	Current' = S3
 }
 
 var sig Change extends Event {} {
@@ -102,12 +102,20 @@ fact {
 	always { one Event && Event.feature in Product }
 }
 
-run {} for 10 but exactly 4 Time,  2  Event
+run {} for 10 but 3 Time,  10  Event
 
 check {
-	always { S4 not in Current }
-} for 5 but 4 Event, 8 Time
+	always { S3 not in Current }
+} for 5 but 3 Event, 3 Time
 
 check {
 	eventually { S3 in Current }
-} for 3 but 8 Event, exactly 5 Time
+} for 3 but 8 Event, exactly 8 Time
+
+check {
+	always {(Current = S5 or Current = S6) => eventually {Current = S8}}
+} for 3 but 8 Event, 8 Time expect 1
+
+check {
+	F not in Product => always {(Current = S5 or Current = S6) => eventually {Current = S8}}
+} for 3 but 8 Event, 8 Time expect 0

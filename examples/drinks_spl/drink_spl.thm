@@ -15,7 +15,6 @@
    <type name="Cancel"/>
    <type name="Close"/>
    <type name="F"/>
-   <type name="Feature"/>
    <type name="Free"/>
    <type name="Int"/>
    <type name="Open"/>
@@ -58,13 +57,10 @@
    <set name="_this/Tea" type="Tea"/>
 </node>
 
-<node showlabel="no" color="Red">
-   <set name="this/Product" type="Feature"/>
-</node>
-
 <node visible="no">
    <type name="Change"/>
    <type name="Event"/>
+   <type name="Feature"/>
    <type name="State"/>
 </node>
 
@@ -75,6 +71,10 @@
 <node visible="yes" showlabel="no" color="Green">
    <set name="_this/Change" type="Change"/>
    <set name="_this/Event" type="Event"/>
+</node>
+
+<node visible="yes" showlabel="no" color="Red">
+   <set name="this/Product" type="Feature"/>
 </node>
 
 </view>
