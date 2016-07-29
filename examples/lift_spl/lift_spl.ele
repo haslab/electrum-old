@@ -176,6 +176,9 @@ I1: check {Product = FIdle => prop1} for 1 but 20 Time,  exactly 3 Floor,  exact
 A1: check {prop1} for 1 but 20 Time,  exactly 3 Floor,  exactly 6 Button
 
 
+A1: check {prop2} for 1 but 20 Time,  exactly 3 Floor,  exactly 6 Button
+
+
 /*B2: check {no Product => prop2} for 1 but 9 Time,  3 Floor, 6 Button
 E2: check {Product = FEmpty => prop2} for 1 but 9 Time,  3 Floor, 6 Button 
 O2: check {Product = FOverload => prop2} for 1 but 9 Time,  3 Floor, 6 Button 
